@@ -8,7 +8,7 @@ fi
 clear
 
 if [ ! -f "/etc/os-release" ]; then
-    echo "Version OS not support! Abort."
+    echo "Your version OS is not supported! The installation process was aborted."
 fi
 
 # Get server params
@@ -260,12 +260,14 @@ package_install=(libmysqlclient16 mysqldb-libs imagemagick liblua5.2-0 libgsasl7
 	brainy-php5-gd brainy-php5-json brainy-php5-pdo brainy-php5-mbstring brainy-php5-mcrypt \
 	brainy-php5-mysql brainy-php5-mbstring brainy-php5-xml \
 	brainy-php5-pgsql brainy-php5-imap brainy-php5-zip brainy-php5-enchant brainy-php5-zendopcache \
-	brainy-php5-imagick brainy-php5-ssh2 brainy-php5-intl brainy-ip \
-	brainy-connect virt-what ipcalc2 \
+	brainy-php5-imagick brainy-php5-ssh2 brainy-php5-intl \
+	brainy-php5-process brainy-ip \
+	brainy-connect virt-what ipcalc2 
+	brainy-core \
 	"openssl" "tar" rclone policykit-1 "whois" \
-	libmariadb3 sshpass libpng16-16 \
-	python3-cloudflare python3-certbot-dns-cloudflare \
-	lftp "at")
+	libmariadb3 sshpass libpng16-16 geoip-bin geoip-database \
+	python3-cloudflare python3-certbot-dns-cloudflare iptables \
+	lftp "unzip" "at" ncdu)
 
 
 #####################################
@@ -278,10 +280,12 @@ package_install=(libmysqlclient16 mysqldb-libs imagemagick liblua5.2-0 libgsasl7
 echo ""
 echo -e "System update checking, please wait... "
 echo -ne '#                         (0%)\r'
-echo "deb [trusted=yes] http://46.175.146.57/centos/ubuntu/ brainycp main" >> /etc/apt/sources.list
+echo "deb [trusted=yes] http://repubra.netxi.in/centos/ubuntu/ brainycp main" >> /etc/apt/sources.list
 apt-get clean &>/dev/null
 apt-get update &>/dev/null
-
+apt-get -y remove --purge needrestart &>/dev/null
+echo -ne '##                        (3%)\r'
+ 
 # Set SYSTEMD default
 sed -i "/#DefaultMemoryAccounting=/cDefaultMemoryAccounting=yes" /etc/systemd/system.conf &> /dev/null
 sed -i "/#DefaultCPUAccounting=/cDefaultCPUAccounting=yes" /etc/systemd/system.conf &> /dev/null
@@ -306,12 +310,15 @@ echo -ne '##########                (44%)\r'
 apt-get install -y systemd &>/dev/null
 echo -ne '#############             (50%)\r'
 apt-get install -y perl &>/dev/null
+echo -ne '###############           (55%)\r'
+apt-get install -y sudo &>/dev/null
 echo -ne '################          (62%)\r'
 apt-get install -y libc6 &>/dev/null
 echo -ne '#####################     (80%)\r'
 apt-get -y install snmp-mibs-downloader &>/dev/null
 echo -ne '######################    (85%)\r'
 apt-get -y install libpam-modules &>/dev/null
+apt-get remove --purge -y nullmailer &>/dev/null
 echo -ne '######################    (87%)\r'
 #download-mibs
 
@@ -326,8 +333,8 @@ apt-get install -y policycoreutils  &>/dev/null
 echo -ne '##########################(100%)\r'
 
 echo -e "\033[1;32m[DONE] \033[0m\n";tput sgr0
-
 # end checked system
+####
 
 echo -en "Disable SELINUX...\t"
 sed -i "/SELINUX=permissive/cSELINUX=disabled" /etc/selinux/config &> /dev/null
@@ -414,8 +421,8 @@ fi
 url_det=http://core.brainycp.com/stable/dev_arch/$panel_ver/latest.tar.gz;
 check_exist=$(validate_url $url_det);
 if [ "$check_exist" == "false" ]; then
- echo "Selected version $panel_ver doesn't exist" ;
- exit 1;
+  echo "Selected version $panel_ver doesn't exist" 
+  exit 1
 fi
 
 echo " "
@@ -452,10 +459,13 @@ rm -r -f /tmp/core.brainycp.ru/
 #firewall-cmd --zone=public --add-port=8002/tcp --permanent  &>/dev/null
 #firewall-cmd --reload  &>/dev/null
 
-
-# Remove conflict packages
-#apt-get remove ^exim4-* -y &>/dev/null
+# Delete the clashing packets
 apt-get remove --purge ^exim4-* exim4 -y &>/dev/null
+apt-get remove --purge ^apache* apache2 -y &>/dev/null
+apt-get remove --purge ^clamav* clamav -y &>/dev/null
+apt-get remove --purge ^nginx* nginx -y &>/dev/null
+apt-get remove --purge ^mysql* mysql -y &>/dev/null
+apt-get remove --purge ^libmariadb* mariadb -y &>/dev/null
 apt-get -y install net-tools &>/dev/null
 apt-get -y install quota &>/dev/null
 
@@ -464,11 +474,10 @@ func_install_package ${package_install[*]}
 if [ $? -eq 1 ]; then
         echo -e "An error occurred, see the log file install_pkg.log for details. \n\n"
         tput sgr0
-        exit 0
+        exit 1
 fi
 
 func_prepare
-
 
 #rm -f /var/lib/dpkg/info/brainy-php.conffiles
 #grep -v "/etc/brainy/src/compiled/" /var/lib/dpkg/status > /var/lib/dpkg/out
@@ -765,7 +774,97 @@ fi
 # Configure MIBS
 download-mibs &>/dev/null
 
+##
+## Kernel update params
+##
+echo -e "\n\n\033[1;33mKernel Update values \n\033[0m\n";tput sgr0
 
+# Level 1
+echo -en "Set for Level 1 of 3...  "
+
+sysctl -e -w fs.file-max=1386242 &>/dev/null
+echo "fs.file-max=1386242" >> /etc/sysctl.conf
+
+sysctl -e -w net.ipv4.tcp_max_tw_buckets=265000 &>/dev/null
+echo "net.ipv4.tcp_max_tw_buckets=265000" >> /etc/sysctl.conf
+#sysctl -e -w net.ipv4.tcp_max_tw_buckets=65000 &>/dev/null
+#echo "net.ipv4.tcp_max_tw_buckets=65000" >> /etc/sysctl.conf
+
+sysctl -e -w net.ipv4.tcp_max_syn_backlog=16384 &>/dev/null
+echo "net.ipv4.tcp_max_syn_backlog=16384" >> /etc/sysctl.conf
+
+sysctl -e -w net.core.netdev_max_backlog=4096 &>/dev/null
+echo "net.core.netdev_max_backlog=4096" >> /etc/sysctl.conf
+
+sysctl -e -w net.core.somaxconn=4096 &>/dev/null
+echo "net.core.somaxconn=4096" >> /etc/sysctl.conf
+
+sysctl -e -w net.ipv4.tcp_keepalive_time=300 &>/dev/null
+echo "net.ipv4.tcp_keepalive_time=300" >> /etc/sysctl.conf
+
+sysctl -e -w net.ipv4.tcp_fin_timeout=15 &>/dev/null
+echo "net.ipv4.tcp_fin_timeout=15" >> /etc/sysctl.conf
+
+sysctl -e -w net.ipv4.tcp_syn_retries=3 &>/dev/null
+echo "net.ipv4.tcp_syn_retries=3" >> /etc/sysctl.conf
+
+sysctl -e -w net.ipv4.tcp_synack_retries=3 &>/dev/null
+echo "net.ipv4.tcp_synack_retries=3" >> /etc/sysctl.conf
+
+echo -en "\033[1;32m [DONE] \033[0m\n";tput sgr0
+
+# Set Level 2
+#
+echo -en "Set for Level 2 of 3...  "
+
+# BBR congestion control algorithm (default: cubic)
+#sysctl -e -w net.ipv4.tcp_congestion_control=bbr &>/dev/null
+#echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+
+# BBR requires fq for queue management (default: fq_codel)
+#sysctl -e -w net.core.default_qdisc=fq &>/dev/null
+#echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
+
+# Disable the gradual speed increase,  useful on variable-speed WANs but not for us (default: 1)
+sysctl -e -w net.ipv4.tcp_slow_start_after_idle=0 &>/dev/null
+echo "net.ipv4.tcp_slow_start_after_idle=0" >> /etc/sysctl.conf
+
+# Don't cache ssthresh from previous connection (default: 0)
+sysctl -e -w net.ipv4.tcp_no_metrics_save=1 &>/dev/null
+echo "net.ipv4.tcp_no_metrics_save=1" >> /etc/sysctl.conf
+
+# Avoid MTU black holes (default: 0)
+sysctl -e -w net.ipv4.tcp_mtu_probing=1 &>/dev/null
+echo "net.ipv4.tcp_mtu_probing=1" >> /etc/sysctl.conf
+
+echo -en "\033[1;32m [DONE] \033[0m\n";tput sgr0
+
+# Level 3
+#
+echo -en "Set for Level 3 of 3...  "
+
+sysctl -e -w net.ipv4.ip_nonlocal_bind=1 &>/dev/null
+echo "net.ipv4.ip_nonlocal_bind=1" >> /etc/sysctl.conf
+
+sysctl -e -w net.ipv6.ip_nonlocal_bind=1 &>/dev/null
+echo "net.ipv6.ip_nonlocal_bind=1" >> /etc/sysctl.conf
+
+# swap
+sysctl -e -w vm.swappiness=50 &>/dev/null
+echo "vm.swappiness=50" >> /etc/sysctl.conf
+
+# oom_killer disable
+sysctl -e -w vm.oom_kill_allocating_task=1 &>/dev/null
+echo "vm.oom_kill_allocating_task=1" >> /etc/sysctl.conf
+
+echo "ip6table_filter" >> /etc/modules
+
+#sysctl -e -w kernel.watchdog_thresh=20 &>/dev/null
+#echo "kernel.watchdog_thresh=20" >> /etc/sysctl.conf
+
+echo -en "\033[1;32m [DONE] \033[0m\n";tput sgr0
+
+#
 echo -e "\n\n\033[1;34m BrainyCP was successfully installed! \033[0m\n\n";tput sgr0
 echo -e "\nBy using this product you completely accept License Agreement - https://brainycp.com/license_agreement\n"
 echo -e "To use it:\n"
@@ -774,6 +873,4 @@ echo -e "username: root\n"
 echo -e "password: YOUR ROOT PASSWORD\n"
 echo ""
 echo -e "\033[1;31m 1) WARNING!!! System updated successfully. Please, reboot your system! \033[0m\n";tput sgr0
-
 exit 0
-
