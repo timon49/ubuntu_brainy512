@@ -18,7 +18,7 @@ apt install htop
 
 
 
-wget https://raw.githubusercontent.com/timon49/ubuntu_brainy512/main/_installUbuntu.sh && bash ./install.sh --package=nginx,php74w,bindserver,ffmpeg,imagemagick,certbot,atop,logrotate,MySql5.7,phpMyAdmin-4.9.4,exim,spamassassin,clamav,proftpd
+wget https://raw.githubusercontent.com/timon49/ubuntu_brainy512/main/_installUbuntu.sh && bash ./_installUbuntu.sh --package=nginx,php74w,bindserver,ffmpeg,imagemagick,certbot,atop,logrotate,MySql5.7,phpMyAdmin-4.9.4,exim,spamassassin,clamav,proftpd
 
 
 .
