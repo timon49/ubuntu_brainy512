@@ -29,6 +29,15 @@ apt install htop
 wget https://repo.fastpanel.direct/install_fastpanel.sh -O - | bash -
 
 
+apt-get install zeroc-ice-slice  
+
+apt-get install php-zeroc-ice 
+
+apt-get install zeroc-ice-all-runtime zeroc-ice-all-dev  
+
+apt-get install  libmcpp0  php-common php-json
+
+
 
 
 .
