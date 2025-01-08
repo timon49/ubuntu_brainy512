@@ -1,3 +1,12 @@
+sudo add-apt-repository ppa:mumble/release
+
+sudo apt-get update
+
+sudo apt list mumble 
+
+apt install mumble-server -y
+
+
 sudo fallocate -l 1G /swapfile 
 
 ls -lh /swapfile
